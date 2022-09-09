@@ -20,32 +20,21 @@ class T5VocabResizer(DefaultModelVocabResizer):
 
         model.config.vocab_size = len(token_ids_temp)
 
-        old_word_embeddings_shared, old_word_embeddings_encoder, old_word_embeddings_decoder = \
-            model.shared, model.encoder.embed_tokens, model.decoder.embed_tokens
+        old_word_embeddings_shared = model.shared
 
-        old_word_embeddings_shared_weight, old_word_embeddings_encoder_weight, old_word_embeddings_decoder_weight = \
-            old_word_embeddings_shared.weight, old_word_embeddings_encoder.weight, old_word_embeddings_decoder.weight
-
-        pruned_word_embeddings_shared_weight, pruned_word_embeddings_encoder_weight, pruned_word_embeddings_decoder_weight = \
-            _prun(old_word_embeddings_shared_weight, token_ids_temp), _prun(old_word_embeddings_encoder_weight, token_ids_temp), _prun(old_word_embeddings_decoder_weight, token_ids_temp)
+        old_word_embeddings_shared_weight = old_word_embeddings_shared.weight
+        pruned_word_embeddings_shared_weight = _prun(old_word_embeddings_shared_weight, token_ids_temp)
 
         pruned_num_tokens, embedding_dim = pruned_word_embeddings_shared_weight.shape
 
         pruned_word_embeddings_shared = nn.Embedding(
             pruned_num_tokens, embedding_dim).to(old_word_embeddings_shared_weight.device)
         pruned_word_embeddings_shared.weight.data[:] = pruned_word_embeddings_shared_weight[:]
-
-        pruned_word_embeddings_encoder = nn.Embedding(
-            pruned_num_tokens, embedding_dim).to(old_word_embeddings_shared_weight.device)
-        pruned_word_embeddings_encoder.weight.data[:] = pruned_word_embeddings_encoder_weight[:]
-
-        pruned_word_embeddings_decoder = nn.Embedding(
-            pruned_num_tokens, embedding_dim).to(old_word_embeddings_shared_weight.device)
-        pruned_word_embeddings_decoder.weight.data[:] = pruned_word_embeddings_decoder_weight[:]
         
         model.shared = pruned_word_embeddings_shared
-        model.encoder.embed_tokens = pruned_word_embeddings_encoder
-        model.decoder.embed_tokens = pruned_word_embeddings_decoder    
+        model.encoder.embed_tokens = model.shared
+        model.decoder.embed_tokens = model.shared
+  
 
 class T5Structure(ModelStructure):
     MODEL_PREFIX: str = "transformer."
